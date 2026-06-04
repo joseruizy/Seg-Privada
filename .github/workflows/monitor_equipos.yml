@@ -1,0 +1,45 @@
+name: Monitor MP - Equipos de Seguridad
+
+on:
+  schedule:
+    - cron: "0 11 * * 1-5"   # lun–vie 11:00 UTC (08:00 CLT / 07:00 CLST)
+    - cron: "0 12 * * 1-5"   # lun–vie 12:00 UTC (09:00 CLT / 08:00 CLST)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run monitor
+        env:
+          MP_TICKET:     ${{ secrets.MP_TICKET }}
+          SMTP_HOST:     ${{ secrets.SMTP_HOST }}
+          SMTP_PORT:     ${{ secrets.SMTP_PORT }}
+          SMTP_USER:     ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          NOTIFY_TO:     ${{ secrets.NOTIFY_TO }}
+          NOTIFY_ALWAYS: ${{ secrets.NOTIFY_ALWAYS }}
+        run: python monitor_equipos.py
+
+      - name: Commit seen.json
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add seen.json
+          git diff --cached --quiet || git commit -m "chore: actualizar seen.json [skip ci]"
+          git push
